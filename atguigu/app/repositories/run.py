@@ -8,3 +8,6 @@ class AgentRunRepository:
 
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    def add_agent_run(self, agent_run: AgentRun):
+        self.session.add(agent_run)

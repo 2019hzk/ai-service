@@ -7,9 +7,9 @@ from atguigu.app.repositories.run import AgentRunRepository
 from atguigu.app.schemas.run import AgentRunRequest
 from atguigu.common.config import get_settings
 from atguigu.common.utils import get_utcnow
-from atguigu.harness.agent.run.events import build_response_event
-from atguigu.harness.agent.run.executor import AgentExecutor
-from atguigu.harness.agent.run.output import AgentRunOutPutMapper
+from atguigu.agent.harness.run.events import build_response_event
+from atguigu.agent.harness.run.executor import AgentExecutor
+from atguigu.agent.harness.run.output import AgentRunOutPutMapper
 from atguigu.models.models import AgentRun, AgentRunState
 
 

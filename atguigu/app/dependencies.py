@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from atguigu.app.services.auth import AuthService
 from atguigu.common.config import get_settings
-from atguigu.harness.agent.run.coordinator import AgentRunCoordinator
-from atguigu.harness.agent.run.executor import AgentExecutor
+from atguigu.agent.harness.run.coordinator import AgentRunCoordinator
+from atguigu.agent.harness.run.executor import AgentExecutor
 from atguigu.infrastructure.db import get_session
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]

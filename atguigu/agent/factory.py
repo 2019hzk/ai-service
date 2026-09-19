@@ -3,9 +3,9 @@ import asyncio
 from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from atguigu.harness.llm.adapter import ModelAdapter
-from atguigu.harness.llm.output import AgentOutput
-from atguigu.harness.llm.prompt import SYSTEM_PROMPT
+from atguigu.agent.llm.adapter import ModelAdapter
+from atguigu.agent.llm.output import AgentOutput
+from atguigu.agent.llm.prompt import SYSTEM_PROMPT
 
 #
 # class User(BaseModel):
@@ -20,7 +20,7 @@ from atguigu.harness.llm.prompt import SYSTEM_PROMPT
 
 def create_support_agent():
     """
-    agent:只创建一次：不同的请求
+    harness:只创建一次：不同的请求
     response_format=自定义结构化对象，llm就会根据该结构化对象的数据结构和类型返回json格式字符串返回，pydantic校验以及转换得到数据模型
     """
     return create_agent(

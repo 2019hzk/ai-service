@@ -1,8 +1,8 @@
 from typing import Any
 
 from atguigu.common.utils import get_uid
-from atguigu.harness.agent.validator.output import ValidatedAgentOutput
-from atguigu.harness.llm.output import ReplyType
+from atguigu.agent.harness.validator.output import ValidatedAgentOutput
+from atguigu.agent.llm.output import ReplyType
 from atguigu.models.models import AgentRunState
 
 

@@ -1,4 +1,4 @@
-from atguigu.harness.llm.output import AgentOutput, ReplyType
+from atguigu.agent.llm.output import AgentOutput, ReplyType
 
 
 class ValidatedAgentOutput(AgentOutput):

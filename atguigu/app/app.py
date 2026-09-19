@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from atguigu.app.routers import run
-from atguigu.harness.factory import create_support_agent
+from atguigu.agent.factory import create_support_agent
 
 
 @asynccontextmanager

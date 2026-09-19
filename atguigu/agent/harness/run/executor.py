@@ -1,8 +1,8 @@
 from typing import Any
 
 from atguigu.app.schemas.run import AgentRunRequest
-from atguigu.harness.agent.run.context import ContextCompiler
-from atguigu.harness.agent.validator.output import OutputValidator, ValidatedAgentOutput
+from atguigu.agent.harness.run.context import ContextCompiler
+from atguigu.agent.harness.validator.output import OutputValidator, ValidatedAgentOutput
 
 
 class AgentExecutor:

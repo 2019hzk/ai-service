@@ -8,7 +8,7 @@ from atguigu.app.dependencies import (
 )
 from atguigu.app.schemas.run import AgentRunRequest
 
-router = APIRouter(prefix="/internal/v1/agent", tags=["AI Run"])
+router = APIRouter(prefix="/internal/v1/harness", tags=["AI Run"])
 
 
 @router.post("/runs")

@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import DateTime, Integer, JSON, String, Text
+from sqlalchemy import DateTime, Integer, JSON, String, Text, Boolean, UniqueConstraint, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from atguigu.common.utils import get_uid, get_utcnow
@@ -63,4 +63,46 @@ class AgentRun(Base):
     finished_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True
+    )
+
+
+class AgentToolCall(Base):
+    """记录一次 Agent 业务工具调用及其执行结果。"""
+
+    __tablename__ = "agent_tool_calls"
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id",
+            "tool_call_id",
+            name="uq_agent_tool_calls_run_call"
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(80),
+        primary_key=True,
+        default=lambda: get_uid("tool")
+    )
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("agent_runs.id"),
+        index=True
+    )
+    tool_call_id: Mapped[str] = mapped_column(String(120))
+    tool_name: Mapped[str] = mapped_column(String(80), index=True)
+    arguments: Mapped[dict[str, Any]] = mapped_column(JSON)
+    result: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON,
+        nullable=True
+    )
+    success: Mapped[bool | None] = mapped_column(
+        Boolean,
+        nullable=True
+    )
+    latency_ms: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=get_utcnow
     )

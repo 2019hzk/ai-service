@@ -1,8 +1,10 @@
 from typing import Any
 
+from atguigu.agent.harness.run.runtime import AgentRuntimeContext
+from atguigu.agent.llm.output import AgentOutput
 from atguigu.app.schemas.run import AgentRunRequest
 from atguigu.agent.harness.run.context import ContextCompiler
-from atguigu.agent.harness.validator.output import OutputValidator, ValidatedAgentOutput
+# from atguigu.agent.harness.validator.output import OutputValidator
 
 
 class AgentExecutor:
@@ -10,9 +12,11 @@ class AgentExecutor:
     def __init__(self, agent: Any):
         self.agent = agent
         self.context_compiler = ContextCompiler()
-        self.output_validator = OutputValidator()
+        # self.output_validator = OutputValidator()
 
-    async def execute(self, request: AgentRunRequest) -> ValidatedAgentOutput:
+    async def execute(self,
+                      request: AgentRunRequest,
+                      runtime_context: AgentRuntimeContext) -> AgentOutput:
         """
         职责：执行agent
         1. 上下文构建器 构建上下文（消息+..）
@@ -23,12 +27,12 @@ class AgentExecutor:
         messages = self.context_compiler.compile_messages(request)
 
         # 2.调用Agent
-        raw_llm_output = await self.agent.ainvoke({"messages": messages})
+        raw_llm_output = await self.agent.ainvoke({"messages": messages}, context=runtime_context)
 
         # 3. 提取结构化对象
         structured_llm_result = raw_llm_output['structured_response']
 
         # 3. 校验Agent输出
-        validated_result = self.output_validator.validate(structured_llm_result)
+        # validated_result = self.output_validator.validate(structured_llm_result)
 
-        return validated_result
+        return structured_llm_result

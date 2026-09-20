@@ -1,11 +1,15 @@
 import asyncio
 
 from langchain.agents import create_agent
+from langchain.agents.middleware import ToolCallLimitMiddleware
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from atguigu.agent.harness.run.runtime import AgentRuntimeContext
+from atguigu.agent.harness.tools.catalog import TOOL_CATALOG
 from atguigu.agent.llm.adapter import ModelAdapter
 from atguigu.agent.llm.output import AgentOutput
 from atguigu.agent.llm.prompt import SYSTEM_PROMPT
+
 
 #
 # class User(BaseModel):
@@ -23,11 +27,18 @@ def create_support_agent():
     harness:只创建一次：不同的请求
     response_format=自定义结构化对象，llm就会根据该结构化对象的数据结构和类型返回json格式字符串返回，pydantic校验以及转换得到数据模型
     """
-    return create_agent(
+    return create_agent(  # type:ignore
         model=ModelAdapter.create_model(),
-        tools=[],
+        tools=TOOL_CATALOG.get_agent_tools(),
         system_prompt=SYSTEM_PROMPT,
         response_format=AgentOutput,
+        context_schema=AgentRuntimeContext,
+        middleware=[
+            ToolCallLimitMiddleware(
+                run_limit=8,
+                exit_behavior="end"
+            )
+        ],
         name="智能客服专家"
     )
 
@@ -42,6 +53,7 @@ async def main_test():
 
     user = result['structured_response']
     print(type(user))
+
 
 if __name__ == '__main__':
     asyncio.run(main_test())

@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     jwt_secret: str = "ecommerce-secret"
     jwt_algorithm: str = "HS256"
     llm_provider: Literal["openai_compatible", "deepseek", "qwen"] = "openai_compatible"
+    ecommerce_base_url: str = "http://127.0.0.1:8001/api/v1"
+    ecommerce_timeout_seconds: float = 8.0
     llm_model: str = ""
     llm_api_key: str = ""
     llm_base_url: str

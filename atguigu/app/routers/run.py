@@ -8,7 +8,7 @@ from atguigu.app.dependencies import (
 )
 from atguigu.app.schemas.run import AgentRunRequest
 
-router = APIRouter(prefix="/internal/v1/harness", tags=["AI Run"])
+router = APIRouter(prefix="/internal/v1/agent", tags=["AI Run"])
 
 
 @router.post("/runs")
@@ -21,7 +21,8 @@ async def start_run(
 
 ) -> dict:
     current_user = auth_service.get_current_customer(authorization)
-    return await agent_coordinator.start_run(current_user.user_id, request)
+    access_token = auth_service.get_bearer_token(authorization)
+    return await agent_coordinator.start_run(current_user.user_id, access_token, request)
 
 
 @router.post("/runs/{run_id}/confirm")

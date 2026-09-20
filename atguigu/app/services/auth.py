@@ -18,7 +18,7 @@ class AuthService:
     ) -> CurrentUser:
 
         # 1. 获取令牌
-        token = self._extract_bearer_token(authorization)
+        token = self.get_bearer_token(authorization)
 
         # 2. 获取当前用户
         current_user = self._decode_access_token(token)
@@ -32,7 +32,7 @@ class AuthService:
         return current_user
 
     @staticmethod
-    def _extract_bearer_token(
+    def get_bearer_token(
             authorization: str | None
     ) -> str:
         if not authorization or not authorization.lower().startswith("bearer "):

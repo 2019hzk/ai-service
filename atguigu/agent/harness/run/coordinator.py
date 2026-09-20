@@ -3,6 +3,7 @@ from time import perf_counter
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from atguigu.agent.harness.run.runtime import AgentRuntimeContext
 from atguigu.app.repositories.run import AgentRunRepository
 from atguigu.app.schemas.run import AgentRunRequest
 from atguigu.common.config import get_settings
@@ -23,6 +24,7 @@ class AgentRunCoordinator:
 
     async def start_run(self,
                         user_id: str,
+                        access_token: str,
                         request: AgentRunRequest) -> dict:
         """
         职责：
@@ -53,18 +55,28 @@ class AgentRunCoordinator:
 
         # 4. 调用执行器执行以及映射AgentRunState对应的数据
         start_time = perf_counter()
+
+        runtime_context = AgentRuntimeContext(
+            run_id=agent_run.id,
+            conversation_id=agent_run.conversation_id,
+            user_id=agent_run.user_id,
+            access_token=access_token
+        )
         try:
             # a) 调用Agent执行获取可信的结果
-            validated_result = await self.executor.execute(request)
+            validated_result = await self.executor.execute(request, runtime_context)
             # b) 将可信的结果映射到不同AgentRunState中
             agent_run.state, agent_run.result = AgentRunOutPutMapper.map(validated_result)
         except Exception as e:
-            agent_run.latency_ms = int(perf_counter() - start_time) * 1000
             agent_run.error = str(e)
             agent_run.state = AgentRunState.FAILED
-            agent_run.finished_at = get_utcnow()
+            agent_run.result = {
+                "message": "AI Service 处理失败"
+            }
 
-        # 5. 调用响应事件构建器构建返回给customer-service的数据
+            # 5. 调用响应事件构建器构建返回给customer-service的数据
+        agent_run.latency_ms = int((perf_counter() - start_time) * 1000)
+        agent_run.finished_at = get_utcnow()
         await self.session.commit()  # session是同一个，且拥有agent_run，那么直接会修改
         return build_response_event(agent_run)
 

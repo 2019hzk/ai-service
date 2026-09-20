@@ -1,3 +1,4 @@
+import json
 from collections.abc import AsyncIterator
 
 from sqlalchemy.ext.asyncio import (
@@ -10,7 +11,11 @@ from atguigu.common.config import get_settings
 
 db_engine = create_async_engine(
     get_settings().ai_database_url,
-    echo=False
+    echo=False,
+    json_serializer=lambda value: json.dumps(
+        value,
+        ensure_ascii=False
+    )
 )
 session_factory = async_sessionmaker(
     db_engine,

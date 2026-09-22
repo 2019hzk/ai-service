@@ -36,7 +36,7 @@ def create_support_agent():
         middleware=[
             ToolCallLimitMiddleware(
                 run_limit=8,
-                exit_behavior="end"
+                exit_behavior="error"
             )
         ],
         name="智能客服专家"

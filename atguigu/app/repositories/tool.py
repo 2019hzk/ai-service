@@ -23,3 +23,17 @@ class ToolCallRepository:
             AgentToolCall.tool_call_id == tool_call_id
         )
         return await self.session.scalar(statement)
+
+    async def list_by_run_id(self,run_id: str) -> list[AgentToolCall]:
+
+        # 1. 构建当前运行全部工具调用的查询
+        statement = (
+            select(AgentToolCall)
+            .where(AgentToolCall.run_id == run_id)
+            .order_by(AgentToolCall.created_at)
+        )
+        # 2. 执行查询
+        result = await self.session.scalars(statement)
+
+        # 3. 转换成调用方可以直接使用的列表
+        return list(result)

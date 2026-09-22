@@ -1,8 +1,24 @@
 from datetime import datetime
 from decimal import Decimal
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
+
+
+class ToolFailureType(StrEnum):
+    """定义工具未返回成功结果的原因类型"""
+
+    BUSINESS = "BUSINESS"
+    SERVICE_CALL = "SERVICE_CALL"
+    CONTRACT = "CONTRACT"
+
+
+class ToolFailureCode(StrEnum):
+    """定义工具执行层生成的稳定失败结果码"""
+
+    TOOL_CALL_FAILED = "TOOL_CALL_FAILED"
+    INVALID_TOOL_RESULT = "INVALID_TOOL_RESULT"
 
 
 class ToolResult[ResultData](BaseModel):
@@ -12,6 +28,7 @@ class ToolResult[ResultData](BaseModel):
     code: str
     message: str
     data: ResultData | None = None
+    failure_type: ToolFailureType | None = None
 
 
 class ProductData(BaseModel):

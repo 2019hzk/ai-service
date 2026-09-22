@@ -7,6 +7,8 @@ openai
 from typing import Any
 from langchain_openai import ChatOpenAI
 from langchain_deepseek import ChatDeepSeek
+
+from atguigu.agent.llm.output import AgentOutput
 from atguigu.common.config import get_settings
 
 
@@ -51,3 +53,15 @@ class ModelAdapter:
             )
 
         return ChatOpenAI(**model_kwargs, use_responses_api=False)
+
+    @staticmethod
+    def normalize_output(value: Any) -> AgentOutput:
+        """从 Agent 执行结果中提取并校验结构化输出。"""
+        structured_output = (
+            value.get("structured_response")
+            if isinstance(value, dict)
+            else value
+        )
+        if isinstance(structured_output, AgentOutput):
+            return structured_output
+        return AgentOutput.model_validate(structured_output)

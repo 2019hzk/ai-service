@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import TypeAdapter, ValidationError
 
 from atguigu.agent.harness.run.runtime import AgentRuntimeContext
-from atguigu.agent.harness.tools.output import ToolResult
+from atguigu.agent.harness.tools.output import ToolResult, ToolFailureType, ToolFailureCode
 from atguigu.app.repositories.tool import ToolCallRepository
 from atguigu.infrastructure.db import session_factory
 from atguigu.models.models import AgentToolCall
@@ -50,8 +50,9 @@ class ToolExecutor:
             logger.exception("业务工具调用失败 [%s]", tool_name)
             tool_result = ToolResult[Any](
                 success=False,
-                code="TOOL_CALL_FAILED",
-                message="暂时无法取得可靠的业务数据"
+                code=ToolFailureCode.TOOL_CALL_FAILED,
+                message="暂时无法取得可靠的业务数据",
+                failure_type=ToolFailureType.SERVICE_CALL
             )
         else:
             # 3. 校验正常响应的外层结构和业务数据
@@ -134,7 +135,11 @@ class ToolExecutor:
             )
             # 2. 业务失败结果不再校验 data
             if not tool_result.success:
-                return tool_result
+                return tool_result.model_copy(
+                    update={
+                        "failure_type": ToolFailureType.BUSINESS
+                    }
+                )
 
             # 3. 按当前工具的数据模型校验并保留内部业务数据
             data_adapter = TypeAdapter(output_schema)
@@ -146,13 +151,15 @@ class ToolExecutor:
                     "data": data_adapter.dump_python(
                         validated_data,
                         mode="json"
-                    )
+                    ),
+                    "failure_type": None
                 }
             )
         except ValidationError:
             # 4. 将不符合数据约定的响应转换成失败结果
             return ToolResult[Any](
                 success=False,
-                code="INVALID_TOOL_RESULT",
-                message="业务工具返回的数据不符合约定"
+                code=ToolFailureCode.INVALID_TOOL_RESULT,
+                message="业务工具返回的数据不符合约定",
+                failure_type=ToolFailureType.CONTRACT
             )

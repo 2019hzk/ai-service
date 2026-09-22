@@ -1,8 +1,10 @@
 import time
+import logging
 from time import perf_counter
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from atguigu.agent.harness.errors import AgentExecutionError, TerminalErrorCode
 from atguigu.agent.harness.run.runtime import AgentRuntimeContext
 from atguigu.app.repositories.run import AgentRunRepository
 from atguigu.app.schemas.run import AgentRunRequest
@@ -12,6 +14,8 @@ from atguigu.agent.harness.run.events import build_response_event
 from atguigu.agent.harness.run.executor import AgentExecutor
 from atguigu.agent.harness.run.output import AgentRunOutPutMapper
 from atguigu.models.models import AgentRun, AgentRunState
+
+logger = logging.getLogger(__name__)
 
 
 class AgentRunCoordinator:
@@ -67,10 +71,27 @@ class AgentRunCoordinator:
             validated_result = await self.executor.execute(request, runtime_context)
             # b) 将可信的结果映射到不同AgentRunState中
             agent_run.state, agent_run.result = AgentRunOutPutMapper.map(validated_result)
-        except Exception as e:
-            agent_run.error = str(e)
+        except Exception as exc:
+            # c. 区分具有稳定错误码的执行失败和边界之外的未知失败
+            if isinstance(exc, AgentExecutionError):
+                error_code = exc.code
+                logger.exception(
+                    "Agent 执行失败 [%s] run_id=%s",
+                    error_code,
+                    agent_run.id
+                )
+            else:
+                error_code = TerminalErrorCode.AGENT_EXECUTION_FAILED
+                logger.exception(
+                    "Agent 未知执行异常 run_id=%s",
+                    agent_run.id
+                )
+
+            # d. 统一保存 Agent 执行失败状态和错误结果
             agent_run.state = AgentRunState.FAILED
+            agent_run.error = str(exc)
             agent_run.result = {
+                "code": error_code,
                 "message": "AI Service 处理失败"
             }
 

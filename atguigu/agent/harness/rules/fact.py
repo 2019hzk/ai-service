@@ -43,15 +43,18 @@ class BusinessFact:
 class FactExtractor:
     """从 Agent 回复中提取需要匹配的业务事实"""
 
+    # 匹配以ORDER、PRODUCT 或 AS 的业务资源编号（如订单号、商品号、售后单号）
     resource_id_pattern = re.compile(
         r"\b(?:ORDER|PRODUCT|AS)[_-][A-Z0-9_-]+\b",
         re.IGNORECASE
     )
+    # 匹配金额、总价、价格、库存、数量 的数值
     labeled_number_pattern = re.compile(
         r"(?:金额|总价|价格|库存|数量)"
         r"(?:为|是|有|剩余|还剩|：|:)?\s*"
         r"[¥￥]?\s*(\d+(?:\.\d+)?)"
     )
+    # 匹配带有货币符号或常用数量单位元、件、个、台、套的数值 （¥399 or 399元）
     unit_number_pattern = re.compile(
         r"(?:[¥￥]\s*(\d+(?:\.\d+)?)|"
         r"(\d+(?:\.\d+)?)\s*(?:元|件|个|台|套))"
@@ -91,6 +94,7 @@ class FactExtractor:
 class FactChecker:
     """匹配 Agent 回复中的业务事实与成功工具数据"""
 
+    # 匹配完整的纯数字文本
     number_pattern = re.compile(r"^[+-]?\d+(?:\.\d+)?$")
 
     def get_unsupported_facts(

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 class ToolFailureType(StrEnum):
     """定义工具未返回成功结果的原因类型"""
 
-    BUSINESS = "BUSINESS"
+    BUSINESS = "BUSINESS"   #  ToolResult 的success：False(失败成功) 的success：True(成功的成功)
     SERVICE_CALL = "SERVICE_CALL"
     CONTRACT = "CONTRACT"
 

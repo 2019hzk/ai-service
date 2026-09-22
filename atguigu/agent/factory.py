@@ -3,6 +3,7 @@ import asyncio
 from langchain.agents import create_agent
 from langchain.agents.middleware import ToolCallLimitMiddleware
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain.agents.structured_output import ToolStrategy
 
 from atguigu.agent.harness.run.runtime import AgentRuntimeContext
 from atguigu.agent.harness.tools.catalog import TOOL_CATALOG

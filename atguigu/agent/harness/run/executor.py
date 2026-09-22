@@ -140,7 +140,7 @@ class AgentExecutor:
         """处理输出校验错误，并返回下一轮纠错消息"""
 
         # 1. 不可纠正或纠错次数耗尽时终止当前 Run
-        is_last_attempt = attempt == 1
+        is_last_attempt = attempt == 2
         if (
                 is_last_attempt
                 or not OutputCorrectionRules.can_correct(error)

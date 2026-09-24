@@ -1,6 +1,7 @@
-from typing import Any
+from typing import Any, Final
 
 from langchain.agents.middleware.tool_call_limit import ToolCallLimitExceededError
+from langchain_core.callbacks import UsageMetadataCallbackHandler
 from pydantic import ValidationError
 
 from atguigu.agent.harness.errors import AgentExecutionError, AgentOutputValidationError, TerminalErrorCode, \
@@ -15,6 +16,10 @@ from atguigu.agent.harness.validator.output import AgentOutputValidator, Validat
 
 
 class AgentExecutor:
+    """Agent 执行器：负责上下文编译、模型调用、输出校验及自我纠错重试。"""
+
+    # 最大执行尝试次数（包含首次调用）
+    MAX_CORRECTION_ATTEMPTS: Final[int] = 2
 
     def __init__(self, agent: Any, output_validator: AgentOutputValidator):
         self.agent = agent
@@ -30,56 +35,92 @@ class AgentExecutor:
         2. 调用Agent，Agent的输出
         3. 校验器 校验Agent输出(可信的结果)
         """
-        # 1. 构建上下文(消息)
+        # 1. 编译上下文并创建本次 Run 共用的 Token 统计器
         messages = self.context_compiler.compile_messages(request)
+        usage_callback = UsageMetadataCallbackHandler()
 
         # 2. 执行带有明确次数上限的 Agent 生成和纠错
-        return await self._execute_with_correction(
+        validated_output = await self._execute_with_correction(
             messages,
-            runtime_context
+            runtime_context,
+            usage_callback
+        )
+
+        # 3. 将全部模型调用和纠错消耗合并到可信输出
+        return validated_output.model_copy(
+            update={
+                "token_usage": self._summarize_token_usage(
+                    usage_callback
+                )
+            }
         )
 
     async def _execute_with_correction(
             self,
             messages: list[Any],
-            runtime_context: AgentRuntimeContext
+            runtime_context: AgentRuntimeContext,
+            usage_callback: UsageMetadataCallbackHandler
     ) -> ValidatedAgentOutput:
-        """执行 Agent，并在允许范围内纠正输出。"""
+        """在允许的有限次数内执行 Agent 生成和自动纠错。"""
+        current_messages = messages
+        attempt = 0
 
-        # 1. 执行首次生成以及配置允许的有限纠错
-        for attempt in range(2):
+        while True:
             try:
-                # a. 调用 Agent 并保留完整执行过程
-                raw_agent_output = await self._invoke_agent(messages, runtime_context)
+                # 1. 调用底层 Agent
+                raw_agent_output = await self._invoke_agent(
+                    current_messages,
+                    runtime_context,
+                    usage_callback
+                )
 
-                # b. 解析结构化结果并执行服务端输出校验
+                # 2. 解析并规范化模型输出
                 normalized_agent_output = self._normalize_agent_output(raw_agent_output)
 
+                # 3. 执行业务层面和服务端规则校验
                 return await self._validate_agent_output(
                     normalized_agent_output,
                     runtime_context.run_id
                 )
             except ToolCallLimitExceededError:
-                # c. 工具超限时使用固定拒绝结果完成当前 Run
+                # 4. 工具超限时使用固定拒绝结果完成当前 Run
                 return self._build_tool_limit_output()
 
             except AgentOutputValidationError as exc:
-                # d. 处理输出错误并生成下一轮纠错消息
-                messages = self._handle_output_validation_error(
-                    raw_agent_output,
-                    exc,
-                    attempt
+                # 5. 无法继续纠错时转换成稳定执行错误
+                is_last_attempt = (
+                        attempt == self.MAX_CORRECTION_ATTEMPTS - 1
                 )
+                if (
+                        is_last_attempt
+                        or not OutputCorrectionRules.can_correct(exc)
+                ):
+                    raise AgentExecutionError(
+                        exc.code,
+                        str(exc)
+                    ) from exc
+
+                # 6. 保留本轮轨迹并追加下一轮纠错反馈
+                current_messages = self._build_correction_messages(
+                    raw_agent_output,
+                    exc
+                )
+                attempt += 1
 
     async def _invoke_agent(
             self,
             messages: list[Any],
-            runtime_context: AgentRuntimeContext
+            runtime_context: AgentRuntimeContext,
+            usage_callback: UsageMetadataCallbackHandler
     ) -> Any:
         """调用共享 Agent，并处理调用异常和工具超限"""
         try:
             # 1. 使用当前模型消息和运行上下文调用 Agent
-            return await self.agent.ainvoke({"messages": messages}, context=runtime_context)
+            return await self.agent.ainvoke(
+                {"messages": messages},
+                context=runtime_context,
+                config={"callbacks": [usage_callback]}
+            )
         except ToolCallLimitExceededError:
             # 2. 将工具超限交给执行主流程生成安全结果
             raise
@@ -103,7 +144,11 @@ class AgentExecutor:
                 "模型返回的结构化结果不符合约定"
             ) from exc
 
-    async def _validate_agent_output(self, output: AgentOutput, run_id: str) -> ValidatedAgentOutput:
+    async def _validate_agent_output(
+            self,
+            output: AgentOutput,
+            run_id: str
+    ) -> ValidatedAgentOutput:
         """执行回答事实和页面动作的服务端校验"""
         try:
             # 1. 使用当前 Run 的工具证据校验 Agent 输出
@@ -131,27 +176,32 @@ class AgentExecutor:
             )
         )
 
-    def _handle_output_validation_error(
-            self,
+    @staticmethod
+    def _build_correction_messages(
             raw_output: Any,
-            error: AgentOutputValidationError,
-            attempt: int
+            error: AgentOutputValidationError
     ) -> list[Any]:
-        """处理输出校验错误，并返回下一轮纠错消息"""
-
-        # 1. 不可纠正或纠错次数耗尽时终止当前 Run
-        is_last_attempt = attempt == 2
-        if (
-                is_last_attempt
-                or not OutputCorrectionRules.can_correct(error)
-        ):
-            raise AgentExecutionError(
-                error.code,
-                str(error)
-            ) from error
-
-        # 2. 保留本轮轨迹并追加纠错反馈
+        """保留本轮轨迹，并追加纠错反馈提示。"""
         return [
             *raw_output["messages"],
             OutputCorrectionRules.build_feedback(error)
         ]
+
+    @staticmethod
+    def _summarize_token_usage(
+            usage_callback: UsageMetadataCallbackHandler
+    ) -> dict[str, int]:
+        """汇总本次 Run 中全部模型调用的 Token 用量。"""
+        usage_items = list(
+            usage_callback.usage_metadata.values()
+        )
+        return {
+            "input_tokens": sum(
+                item.get("input_tokens", 0)
+                for item in usage_items
+            ),
+            "output_tokens": sum(
+                item.get("output_tokens", 0)
+                for item in usage_items
+            ),
+        }

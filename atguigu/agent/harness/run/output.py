@@ -19,7 +19,14 @@ class AgentRunOutPutMapper:
         """
 
         if validated_result.reply_type == ReplyType.ANSWER:
-            return AgentRunState.COMPLETED, AgentRunOutPutMapper._build_agent_output(validated_result)
+            state = (
+                AgentRunState.DECISION_PREPARED
+                if validated_result.page_action is not None
+                else AgentRunState.COMPLETED
+            )
+            return state, AgentRunOutPutMapper._build_agent_output(
+                validated_result
+            )
 
         if validated_result.reply_type == ReplyType.CLARIFY:
             return AgentRunState.COMPLETED, AgentRunOutPutMapper._build_agent_output(validated_result)
@@ -44,9 +51,7 @@ class AgentRunOutPutMapper:
         }
         # 1. 将服务端校验后生成的可信页面动作写入消息内容
         if validated_result.page_action is not None:
-            result["content"]["action"] = validated_result.page_action.model_dump(
-                mode="json"
-            )
+            result["content"]["action"] = validated_result.page_action.model_dump(mode="json")
         return result
 
     @classmethod

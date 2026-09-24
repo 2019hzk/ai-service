@@ -11,3 +11,6 @@ class AgentRunRepository:
 
     def add_agent_run(self, agent_run: AgentRun):
         self.session.add(agent_run)
+
+    async def find_by_id(self, run_id: str) -> AgentRun | None:
+        return await self.session.get(AgentRun, run_id)

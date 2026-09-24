@@ -12,22 +12,18 @@ class AuthService:
     def __init__(self):
         self.settings = get_settings()
 
-    def get_current_customer(
+    def get_authorized_user(
             self,
-            authorization: str | None
+            authorization: str | None,
+            required_role: str
     ) -> CurrentUser:
-
-        # 1. 获取令牌
+        """解析当前用户并校验接口要求的身份。"""
         token = self.get_bearer_token(authorization)
-
-        # 2. 获取当前用户
         current_user = self._decode_access_token(token)
-
-        # 3. 校验当前用户的角色
-        if current_user.role != "customer":
+        if current_user.role != required_role:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="只有客户身份可以调用 AI Service"
+                detail="当前用户没有接口访问权限"
             )
         return current_user
 

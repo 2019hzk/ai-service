@@ -10,8 +10,9 @@ from atguigu.agent.harness.tools.read import (
     get_product_stock,
     list_after_sales,
     list_orders,
-    search_products
+    search_products, search_knowledge
 )
+from atguigu.agent.harness.tools.skill import load_skill
 
 
 class ToolCategory(StrEnum):
@@ -19,6 +20,7 @@ class ToolCategory(StrEnum):
 
     BUSINESS = "BUSINESS"
     KNOWLEDGE = "KNOWLEDGE"
+    GUIDANCE = "GUIDANCE"
 
 
 @dataclass(frozen=True)
@@ -63,6 +65,8 @@ TOOL_CATALOG = ToolCatalog(
         ToolDefinition(list_orders, ToolCategory.BUSINESS),
         ToolDefinition(get_order, ToolCategory.BUSINESS),
         ToolDefinition(get_logistics, ToolCategory.BUSINESS),
-        ToolDefinition(list_after_sales, ToolCategory.BUSINESS)
+        ToolDefinition(list_after_sales, ToolCategory.BUSINESS),
+        ToolDefinition(search_knowledge, ToolCategory.KNOWLEDGE),
+        ToolDefinition(load_skill, ToolCategory.GUIDANCE)
     )
 )

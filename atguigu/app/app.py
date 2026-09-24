@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from atguigu.app.routers import run
+from atguigu.app.routers import admin, run
 from atguigu.agent.factory import create_support_agent
 
 
@@ -23,6 +23,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Ecommerce AI Service", lifespan=lifespan)
 
 app.include_router(run.router)
+app.include_router(admin.router)
 
 app.add_middleware(
     CORSMiddleware,

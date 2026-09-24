@@ -2,6 +2,7 @@ import time
 import logging
 from time import perf_counter
 
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from atguigu.agent.harness.errors import AgentExecutionError, TerminalErrorCode
@@ -46,7 +47,7 @@ class AgentRunCoordinator:
             turn_id=request.turn_id,
             state=AgentRunState.RUNNING,
             model_name=self.setting.llm_model,
-            prompt_version="v1",
+            prompt_version=self.setting.prompt_version,
             input_context=request.model_dump(mode="json"),
 
         )
@@ -68,6 +69,12 @@ class AgentRunCoordinator:
         try:
             # a) 调用Agent执行获取可信的结果
             validated_result = await self.executor.execute(request, runtime_context)
+            agent_run.input_tokens = validated_result.token_usage[
+                "input_tokens"
+            ]
+            agent_run.output_tokens = validated_result.token_usage[
+                "output_tokens"
+            ]
             # b) 将可信的结果映射到不同AgentRunState中
             agent_run.state, agent_run.result = AgentRunOutPutMapper.map(validated_result)
         except Exception as exc:
@@ -96,7 +103,8 @@ class AgentRunCoordinator:
 
             # 5. 调用响应事件构建器构建返回给customer-service的数据
         agent_run.latency_ms = int((perf_counter() - start_time) * 1000)
-        agent_run.finished_at = get_utcnow()
+        if agent_run.state != AgentRunState.DECISION_PREPARED:
+            agent_run.finished_at = get_utcnow()
         await self.session.commit()  # session是同一个，且拥有agent_run，那么直接会修改
         return build_response_event(agent_run)
 
@@ -109,7 +117,11 @@ class AgentRunCoordinator:
         2. 修改AgentRun的状态（COMPLETED）
         3. 返回结果
         """
-        return {}
+        run = await self.agent_run_repo.find_by_id(run_id)
+        run.state = AgentRunState.COMPLETED
+        run.finished_at = get_utcnow()
+        await self.session.commit()
+        return build_response_event(run)
 
     async def cancel_run(self,
                          user_id: str,
@@ -119,6 +131,12 @@ class AgentRunCoordinator:
             核心职责：
             修改AgentRun的状态（SUPERSEDED）
         """
+
+        run = await self.agent_run_repo.find_by_id(run_id)
+        if run.state == AgentRunState.DECISION_PREPARED:
+            run.state = AgentRunState.SUPERSEDED
+            run.finished_at = get_utcnow()
+            await self.session.commit()
 
 
 if __name__ == '__main__':

@@ -1,3 +1,5 @@
+from pydantic import Field
+
 from atguigu.agent.harness.rules.action import PageAction
 from atguigu.agent.harness.tools.snapshot import ToolCallReader
 from atguigu.agent.harness.validator.action import PageActionValidator
@@ -7,6 +9,12 @@ from atguigu.agent.llm.output import AgentOutput
 
 class ValidatedAgentOutput(AgentOutput):
     page_action: PageAction | None = None
+    token_usage: dict[str, int] = Field(
+        default_factory=lambda: {
+            "input_tokens": 0,
+            "output_tokens": 0,
+        }
+    )
 
 
 class AgentOutputValidator:

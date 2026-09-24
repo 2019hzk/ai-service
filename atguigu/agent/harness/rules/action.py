@@ -68,6 +68,13 @@ class ActionCatalog:
 
         return self.definitions[action_code]
 
+    def render_action_index(self) -> str:
+        """渲染供模型选择的页面动作索引"""
+        return "\n".join(
+            f"- {definition.action_code}: {definition.description}"
+            for definition in self.definitions.values()
+        )
+
     def build_page_action(
             self,
             action_code: ActionCode,

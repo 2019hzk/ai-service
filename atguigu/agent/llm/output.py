@@ -44,10 +44,7 @@ class PageActionRequest(BaseModel):
     )
     resource_id: str | None = Field(
         default=None,
-        description=(
-            "具体订单页面动作使用的订单编号，必须与订单详情工具"
-            "成功确认的订单编号一致；订单列表页不提供"
-        )
+        description="具体订单页面动作使用的订单编号，必须与订单详情工具m成功确认的订单编号一致；订单列表页不提供"
     )
 
     @model_validator(mode="after")
@@ -75,8 +72,10 @@ class AgentOutput(BaseModel):
     reply_type: ReplyType = Field(description="本轮客服回复的业务类型")
     reply_content: str = Field(min_length=1, max_length=4000, description="可以直接展示给用户的完整回复内容")
     handoff_request: HandoffRequest | None = Field(default=None, description="仅请求转人工时提供的工单信息")
-    page_action_request: PageActionRequest | None = Field(default=None, description="仅正常回答需要引导用户前往页面时提供"
-                                                          )
+    page_action_request: PageActionRequest | None = Field(
+        default=None,
+        description="仅当用户明确要求前往、打开或查看页面，或者提出必须在页面完成的操作时提供；仅查询业务信息时不得提供"
+    )
 
     @model_validator(mode="after")
     def validate_output_fields(self) -> Self:

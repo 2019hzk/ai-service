@@ -19,9 +19,6 @@ def get_auth_service() -> AuthService:
     return AuthService()
 
 
-AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
-
-
 def get_tool_call_reader(session: SessionDep) -> ToolCallReader:
     return ToolCallReader(ToolCallRepository(session))
 

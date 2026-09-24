@@ -3,6 +3,8 @@ from urllib.parse import quote
 
 from langchain.tools import ToolRuntime, tool
 
+from atguigu.agent.harness.knowledge.output import KnowledgeItem
+from atguigu.agent.harness.knowledge.service import KnowledgeQueryService
 from atguigu.agent.harness.run.runtime import AgentRuntimeContext
 from atguigu.agent.harness.tools.executor import ToolExecutor
 from atguigu.agent.harness.tools.output import (
@@ -10,11 +12,9 @@ from atguigu.agent.harness.tools.output import (
     LogisticsData,
     OrderData,
     ProductData,
-    ProductStockData
+    ProductStockData, ToolResult
 )
 from atguigu.infrastructure.client import EcommerceClient
-
-tool_executor = ToolExecutor()
 
 
 def _normalize_resource_id(resource_id: str) -> str:
@@ -288,3 +288,54 @@ async def list_after_sales(
         operation=request_after_sales,
         output_schema=list[AfterSaleData]
     )
+
+
+@tool
+async def search_knowledge(
+        query: Annotated[
+            str,
+            "需要查询的平台规则、服务政策或帮助说明"
+        ],
+        runtime: ToolRuntime[AgentRuntimeContext]
+) -> str:
+    """查询平台知识内容。
+
+    用户询问售后规则、物流说明、发票规则或平台帮助说明时调用。
+    该工具不用于查询订单、商品、库存、物流进度等实时业务数据。
+    """
+    # 1. 确认 LangChain 已经为本次调用分配调用编号
+    if runtime.tool_call_id is None:
+        raise RuntimeError("知识查询工具缺少调用编号")
+
+    # 2. 清理模型生成的查询内容
+    normalized_query = query.strip()
+
+    # 3. 定义本次工具需要执行的知识查询
+    async def request_knowledge() -> object:
+        knowledge_items = await knowledge_query_service.search(
+            normalized_query
+        )
+        return ToolResult[list[KnowledgeItem]](
+            success=True,
+            code="KNOWLEDGE_SEARCH_COMPLETED",
+            message=(
+                "已找到相关知识内容"
+                if knowledge_items
+                else "未找到相关知识内容"
+            ),
+            data=knowledge_items
+        ).model_dump(mode="python")
+
+    # 4. 交给统一执行器记录、执行并校验结果
+    return await tool_executor.execute(
+        runtime_context=runtime.context,
+        tool_call_id=runtime.tool_call_id,
+        tool_name="search_knowledge",
+        arguments={"query": normalized_query},
+        operation=request_knowledge,
+        output_schema=list[KnowledgeItem]
+    )
+
+
+tool_executor = ToolExecutor()
+knowledge_query_service = KnowledgeQueryService()

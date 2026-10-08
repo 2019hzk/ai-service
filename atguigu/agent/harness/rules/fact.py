@@ -107,19 +107,31 @@ class FactChecker:
         # 1. 从最终回复中提取需要业务数据支持的事实
         facts = FactExtractor.extract(reply_content)
 
-        # 2. 回复不包含业务事实时直接通过校验
+        # 2. 没有成功业务工具时豁免数值事实，保留编号和状态校验
+        if not successful_tool_calls:
+            facts = tuple(
+                fact
+                for fact in facts
+                if fact.category != FactCategory.NUMBER
+            )
+
+        # 3. 回复不包含业务事实时直接通过校验
         if not facts:
             return ()
 
-        # 3. 创建数字值和规范化文本值的证据集合
+        # 4. 创建数字值和规范化文本值的证据集合
         source_decimals: set[Decimal] = set()
         normalized_sources: set[str] = set()
 
-        # 4. 收集成功工具参数及结果中的全部标量证据
+        # 5. 收集成功工具参数及结果中的全部标量证据
         for tool_call in successful_tool_calls:
+            data = tool_call.result["data"]
+            if tool_call.tool_name == "list_orders" and isinstance(data, list):
+                source_decimals.add(Decimal(len(data)))
+
             for source in (
                 tool_call.arguments,
-                tool_call.result["data"],
+                data
             ):
                 for scalar in self._iter_scalars(source):
                     normalized_sources.add(
@@ -129,7 +141,7 @@ class FactChecker:
                     if decimal_value is not None:
                         source_decimals.add(decimal_value)
 
-        # 5. 返回无法在工具证据中找到等价值的业务事实
+        # 6. 返回无法在工具证据中找到等价值的业务事实
         return tuple(
             fact
             for fact in facts

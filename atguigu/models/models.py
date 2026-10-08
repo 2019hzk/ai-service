@@ -4,10 +4,7 @@ from typing import Any
 
 from sqlalchemy import DateTime, Integer, JSON, String, Text, Boolean, UniqueConstraint, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
 from atguigu.common.utils import get_uid, get_utcnow
-
-
 class Base(DeclarativeBase):
     pass
 
